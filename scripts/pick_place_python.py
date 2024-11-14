@@ -156,13 +156,6 @@ class MoveGroupPythonInterfaceTutorial(object):
         ## We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
         # We get the joint values from the group and change some of the values:
         joint_goal = move_group.get_current_joint_values()
-        # joint_goal[0] = 0.680678
-        # joint_goal[1] = -0.1578 
-        # joint_goal[2] = -0.645772 
-        # joint_goal[3] = -1.9548 
-        # joint_goal[4] = -0.10472 
-        # joint_goal[5] = 1.8326 
-        # joint_goal[6] = 1.17 
         joint_goal[0] = -2.863
         joint_goal[1] = 0.157 
         joint_goal[2] = 2.894 
