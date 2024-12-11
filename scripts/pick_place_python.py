@@ -5,15 +5,18 @@
 # Acknowledgements: [moveit_tutorials/pick_place_tutorial]
 
 from __future__ import print_function
-
+from moveit_msgs.msg import Constraints, OrientationConstraint
 import sys
 import copy
+from scipy.spatial.transform import Rotation as R
 
 import rospy
 import moveit_msgs.msg
 from six.moves import input
 import moveit_commander
 import geometry_msgs.msg
+from tf.transformations import quaternion_from_euler
+from geometry_msgs.msg import Pose
 
 try:
     from math import pi
@@ -133,6 +136,8 @@ class MoveGroupPythonInterfaceTutorial(object):
 
         # Misc variables
         self.box_name = ""
+        self.bin_name = ["bin1"]
+        self.battery_name = ["battery1"]
         self.robot = robot
         self.scene = scene
         self.move_group = move_group
@@ -140,6 +145,106 @@ class MoveGroupPythonInterfaceTutorial(object):
         self.planning_frame = planning_frame
         self.eef_link = eef_link
         self.group_names = group_names
+        self.batteries_loc = []
+        self.bins_loc = []
+        self.home_loc = [0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785]
+
+
+
+    def home_position(self):
+        move_group = self.move_group
+
+        ## BEGIN_SUB_TUTORIAL plan_to_joint_state
+        ##
+        ## Planning to a Joint Goal
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^
+        ## The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        ## thing we want to do is move it to a slightly better configuration.
+        ## We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        joint_goal[0] = self.home_loc[0]
+        joint_goal[1] = self.home_loc[1]
+        joint_goal[2] = self.home_loc[2]
+        joint_goal[3] = self.home_loc[3]
+        joint_goal[4] = self.home_loc[4]
+        joint_goal[5] = self.home_loc[5]
+        joint_goal[6] = self.home_loc[6]
+
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        move_group.go(joint_goal, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        return all_close(joint_goal, current_joints, 0.01)
+
+
+    def pick_up_batteries(self):
+        move_group = self.move_group
+
+        ## BEGIN_SUB_TUTORIAL plan_to_joint_state
+        ##
+        ## Planning to a Joint Goal
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^
+        ## The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        ## thing we want to do is move it to a slightly better configuration.
+        ## We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        joint_goal[0] = self.batteries_loc[0][0]
+        joint_goal[1] = self.batteries_loc[0][1]
+        joint_goal[2] = self.batteries_loc[0][2]
+        joint_goal[3] = self.batteries_loc[0][3]
+        joint_goal[4] = self.batteries_loc[0][4]
+        joint_goal[5] = self.batteries_loc[0][5]
+        joint_goal[6] = self.batteries_loc[0][6]
+
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        move_group.go(joint_goal, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        return all_close(joint_goal, current_joints, 0.01)
+
+    def drop_off_batteries(self):
+        move_group = self.move_group
+
+        ## BEGIN_SUB_TUTORIAL plan_to_joint_state
+        ##
+        ## Planning to a Joint Goal
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^
+        ## The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        ## thing we want to do is move it to a slightly better configuration.
+        ## We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        joint_goal[0] = self.bins_loc[0][0]
+        joint_goal[1] = self.bins_loc[0][1]
+        joint_goal[2] = self.bins_loc[0][2]
+        joint_goal[3] = self.bins_loc[0][3]
+        joint_goal[4] = self.bins_loc[0][4]
+        joint_goal[5] = self.bins_loc[0][5]
+        joint_goal[6] = self.bins_loc[0][6]
+
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        move_group.go(joint_goal, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        return all_close(joint_goal, current_joints, 0.01)
+
 
     def go_to_joint_state(self):
         # Copy class variables to local variables to make the web tutorials more clear.
@@ -373,6 +478,77 @@ class MoveGroupPythonInterfaceTutorial(object):
         return False
         ## END_SUB_TUTORIAL
 
+    def add_batteries(self, timeout = 4):
+        scene = self.scene
+
+        ## BEGIN_SUB_TUTORIAL add_box
+        ##
+        ## Adding Objects to the Planning Scene
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## First, we will create a box in the planning scene between the fingers:
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = "world"
+        box_pose.pose.orientation.w = 1.0
+        box_pose.pose.position.z = 0.05  # above the panda_hand frame
+        box_pose.pose.position.x = 0.5  # above the panda_hand frame
+        joint_state = [-0.024, 0.531, 0.068, -2.307, -0.114, 2.835, 0.917]
+        self.batteries_loc.append(joint_state)
+
+        scene.add_mesh(self.battery_name[0], box_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/battery.stl', size = (1,1,1))
+
+        ## END_SUB_TUTORIAL
+        # Copy local variables back to class variables. In practice, you should use the class
+        # variables directly unless you have a good reason not to.
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
+    def add_batteries(self, timeout = 4):
+        scene = self.scene
+
+        ## BEGIN_SUB_TUTORIAL add_box
+        ##
+        ## Adding Objects to the Planning Scene
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## First, we will create a box in the planning scene between the fingers:
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = "world"
+        box_pose.pose.orientation.w = 1.0
+        box_pose.pose.position.z = 0.05  # above the panda_hand frame
+        box_pose.pose.position.x = 0.5  # above the panda_hand frame
+        joint_state = [-0.024, 0.531, 0.068, -2.307, -0.114, 2.835, 0.917]
+        self.batteries_loc.append(joint_state)
+
+        scene.add_mesh(self.battery_name[0], box_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/battery.stl', size = (1,1,1))
+
+        ## END_SUB_TUTORIAL
+        # Copy local variables back to class variables. In practice, you should use the class
+        # variables directly unless you have a good reason not to.
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
+
+    def setup_scene(self, timeout = 4):
+        scene = self.scene
+        bin_pose = geometry_msgs.msg.PoseStamped()
+        bin_pose.header.frame_id = "world"
+        # Orientation: 90 degrees rotation around the X-axis
+        rotation = R.from_euler('x', 90, degrees=True)
+        quaternion = rotation.as_quat()  # Returns (x, y, z, w)
+
+        # Set orientation
+        bin_pose.pose.orientation.x = quaternion[0]
+        bin_pose.pose.orientation.y = quaternion[1]
+        bin_pose.pose.orientation.z = quaternion[2]
+        bin_pose.pose.orientation.w = quaternion[3]
+        bin_pose.pose.position.z = 0.05  # above the panda_hand frame
+        bin_pose.pose.position.y = 0.5  # above the panda_hand frame
+        bin_pose.pose.position.x = 0.2  # above the panda_hand frame
+        joint_state = [0.129, 0.405, 0.704, -2.250, -0.451, 2.516, 1.089]
+        self.bins_loc.append(joint_state)
+
+        scene.add_mesh(self.bin_name[0], bin_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/bin_scaled.stl', size = (1,1,1))
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
+        
+
     def add_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
@@ -400,59 +576,33 @@ class MoveGroupPythonInterfaceTutorial(object):
         self.box_name = box_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
 
-    def add_box2(self, timeout=4):
+    def attach_battery(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
         # reason not to.
-        box_name = self.box_name
+        battery_name = self.battery_name[0]
+        robot = self.robot
         scene = self.scene
+        eef_link = self.eef_link
+        group_names = self.group_names
 
-        ## BEGIN_SUB_TUTORIAL add_box
+        ## BEGIN_SUB_TUTORIAL attach_object
         ##
-        ## Adding Objects to the Planning Scene
+        ## Attaching Objects to the Robot
         ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ## First, we will create a box in the planning scene between the fingers:
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "world"
-        box_pose.header.frame_id = "world"
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.z = 0.025  # above the panda_hand frame
-        box_pose.pose.position.y = 0.75  # above the panda_hand frame
-        box_name = "box2"
-        scene.add_box(box_name, box_pose, size=(0.8, 0.8, 0.5))
-
+        ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
+        ## robot be able to touch them without the planning scene reporting the contact as a
+        ## collision. By adding link names to the ``touch_links`` array, we are telling the
+        ## planning scene to ignore collisions between those links and the box. For the Panda
+        ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
+        ## you should change this value to the name of your end effector group name.
+        grasping_group = "panda_hand"
+        touch_links = robot.get_link_names(group=grasping_group)
+        scene.attach_box(eef_link, battery_name, touch_links=touch_links)
         ## END_SUB_TUTORIAL
-        # Copy local variables back to class variables. In practice, you should use the class
-        # variables directly unless you have a good reason not to.
-        self.box_name = box_name
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
 
-    def add_box3(self, timeout=4):
-        # Copy class variables to local variables to make the web tutorials more clear.
-        # In practice, you should use the class variables directly unless you have a good
-        # reason not to.
-        box_name = self.box_name
-        scene = self.scene
-
-        ## BEGIN_SUB_TUTORIAL add_box
-        ##
-        ## Adding Objects to the Planning Scene
-        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ## First, we will create a box in the planning scene between the fingers:
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "world"
-        box_pose.header.frame_id = "world"
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.z = 0.35  # above the panda_hand frame
-        box_pose.pose.position.x = 0.5  # above the panda_hand frame
-        box_name = "box3"
-        scene.add_box(box_name, box_pose, size=(0.025, 0.025, 0.2))
-
-        ## END_SUB_TUTORIAL
-        # Copy local variables back to class variables. In practice, you should use the class
-        # variables directly unless you have a good reason not to.
-        self.box_name = box_name
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=timeout)
 
     def attach_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
@@ -501,6 +651,26 @@ class MoveGroupPythonInterfaceTutorial(object):
         # We wait for the planning scene to update.
         return self.wait_for_state_update(box_is_known=True, box_is_attached=False, timeout=timeout)
 
+    def detach_battery(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        battery_name = self.battery_name[0]
+        scene = self.scene
+        eef_link = self.eef_link
+
+        ## BEGIN_SUB_TUTORIAL detach_object
+        ##
+        ## Detaching Objects from the Robot
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## We can also detach and remove the object from the planning scene:
+        scene.remove_attached_object(eef_link, name=battery_name)
+        ## END_SUB_TUTORIAL
+
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(box_is_known=True, box_is_attached=False, timeout=timeout)
+
+
     def remove_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
@@ -522,7 +692,6 @@ class MoveGroupPythonInterfaceTutorial(object):
         self.go_to_joint_state()
         self.attach_box()
         self.go_to_joint_state2()
-
         self.detach_box()
         return
 
@@ -538,15 +707,18 @@ def main():
         tutorial = MoveGroupPythonInterfaceTutorial()
 
         input("============ Press `Enter` to set up the scene...")
-        tutorial.add_box()
-        tutorial.add_box2()
-        tutorial.add_box3()
+        tutorial.setup_scene()
+        tutorial.add_batteries()
+        # tutorial.add_box()
+        # tutorial.add_box2()
+        # tutorial.add_box3()
         input("============ Press `Enter` to move the pen...")
-        tutorial.pick_up_the_pen()
-
-
-        # input("============ Press `Enter` to remove the box from the planning scene ...")
-        # tutorial.remove_box()
+        # tutorial.pick_up_the_pen()
+        tutorial.pick_up_batteries()
+        tutorial.attach_battery()
+        tutorial.drop_off_batteries()
+        tutorial.detach_battery()
+        tutorial.home_position()
 
         print("============ Robot complete!")
     except rospy.ROSInterruptException:
