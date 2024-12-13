@@ -136,8 +136,10 @@ class MoveGroupPythonInterfaceTutorial(object):
 
         # Misc variables
         self.box_name = ""
-        self.bin_name = ["bin1"]
+        self.bin_name = ["caliper_bin", "mallet_bin", "pliers_bin", "screwdriver_bin"]
         self.battery_name = ["battery1"]
+
+        self.tools_name = ["caliper","mallet", "pliers", "screwdrivers"]
         self.robot = robot
         self.scene = scene
         self.move_group = move_group
@@ -148,6 +150,10 @@ class MoveGroupPythonInterfaceTutorial(object):
         self.batteries_loc = []
         self.bins_loc = []
         self.home_loc = [0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785]
+        self.tool_loc = []
+        # self.mallet_loc = []
+        # self.pliers_loc = []
+        # self.screwdrivers_loc = []
 
 
 
@@ -181,6 +187,37 @@ class MoveGroupPythonInterfaceTutorial(object):
         # For testing:
         current_joints = move_group.get_current_joint_values()
         return all_close(joint_goal, current_joints, 0.01)
+    
+    def pick_up_tools(self, tool):
+        move_group = self.move_group
+
+        ## BEGIN_SUB_TUTORIAL plan_to_joint_state
+        ##
+        ## Planning to a Joint Goal
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^
+        ## The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        ## thing we want to do is move it to a slightly better configuration.
+        ## We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        joint_goal[0] = tool[0]
+        joint_goal[1] = tool[1]
+        joint_goal[2] = tool[2]
+        joint_goal[3] = tool[3]
+        joint_goal[4] = tool[4]
+        joint_goal[5] = tool[5]
+        joint_goal[6] = tool[6]
+
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        move_group.go(joint_goal, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        return all_close(joint_goal, current_joints, 0.01)
 
 
     def pick_up_batteries(self):
@@ -202,6 +239,37 @@ class MoveGroupPythonInterfaceTutorial(object):
         joint_goal[4] = self.batteries_loc[0][4]
         joint_goal[5] = self.batteries_loc[0][5]
         joint_goal[6] = self.batteries_loc[0][6]
+
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        move_group.go(joint_goal, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        return all_close(joint_goal, current_joints, 0.01)
+    
+    def drop_off_tools(self, tool):
+        move_group = self.move_group
+
+        ## BEGIN_SUB_TUTORIAL plan_to_joint_state
+        ##
+        ## Planning to a Joint Goal
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^
+        ## The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        ## thing we want to do is move it to a slightly better configuration.
+        ## We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        joint_goal[0] = tool[0]
+        joint_goal[1] = tool[1]
+        joint_goal[2] = tool[2]
+        joint_goal[3] = tool[3]
+        joint_goal[4] = tool[4]
+        joint_goal[5] = tool[5]
+        joint_goal[6] = tool[6]
 
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -501,23 +569,55 @@ class MoveGroupPythonInterfaceTutorial(object):
         # variables directly unless you have a good reason not to.
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
 
-    def add_batteries(self, timeout = 4):
+    def add_tools(self, timeout = 4):
         scene = self.scene
 
-        ## BEGIN_SUB_TUTORIAL add_box
-        ##
-        ## Adding Objects to the Planning Scene
-        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ## First, we will create a box in the planning scene between the fingers:
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "world"
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.z = 0.05  # above the panda_hand frame
-        box_pose.pose.position.x = 0.5  # above the panda_hand frame
-        joint_state = [-0.024, 0.531, 0.068, -2.307, -0.114, 2.835, 0.917]
-        self.batteries_loc.append(joint_state)
+        caliper_pose = geometry_msgs.msg.PoseStamped()
+        caliper_pose.header.frame_id = "world"
+        caliper_pose.pose.orientation.w = 1.0
+        caliper_pose.pose.position.z = -0.05  # above the panda_hand frame
+        caliper_pose.pose.position.y = -0.2  # above the panda_hand frame
+        caliper_pose.pose.position.x = 0.45  # above the panda_hand frame
+        joint_state = [-0.806, 0.419, 0.345, -2.378, -0.360, 2.725, -2.400]
+        self.tool_loc.append(joint_state)
+        scene.add_mesh(self.tools_name[0], caliper_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/caliper_scaled.stl', size = (1,1,1))
 
-        scene.add_mesh(self.battery_name[0], box_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/battery.stl', size = (1,1,1))
+        mallet_pose = geometry_msgs.msg.PoseStamped()
+        mallet_pose.header.frame_id = "world"
+        rotation = R.from_euler('y', 90, degrees=True)
+        quaternion = rotation.as_quat()  # Returns (x, y, z, w)
+
+        # Set orientation
+        mallet_pose.pose.orientation.x = quaternion[0]
+        mallet_pose.pose.orientation.y = quaternion[1]
+        mallet_pose.pose.orientation.z = quaternion[2]
+        mallet_pose.pose.orientation.w = quaternion[3]
+        mallet_pose.pose.position.z = 0.05  # above the panda_hand frame
+        mallet_pose.pose.position.y = -0.4  # above the panda_hand frame
+        mallet_pose.pose.position.x = 0.3  # above the panda_hand frame
+        joint_state = [-0.536, 0.357, -0.142, -2.577, 0.231, 2.925, 1.673]
+        self.tool_loc.append(joint_state)
+        scene.add_mesh(self.tools_name[1], mallet_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/mallet_scaled.stl', size = (1,1,1))
+
+        pliers_pose = geometry_msgs.msg.PoseStamped()
+        pliers_pose.header.frame_id = "world"
+        pliers_pose.pose.orientation.w = 1.0
+        pliers_pose.pose.position.z = 0.05  # above the panda_hand frame
+        pliers_pose.pose.position.y = -0.4  # above the panda_hand frame
+        pliers_pose.pose.position.x = 0.5  # above the panda_hand frame
+        joint_state = [-0.316, 0.858, -0.453, -1.664, 0.513, 2.401, 1.371]
+        self.tool_loc.append(joint_state)
+        scene.add_mesh(self.tools_name[2], pliers_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/pliers_scaled.stl', size = (1,1,1))
+
+        screwdriver_pose = geometry_msgs.msg.PoseStamped()
+        screwdriver_pose.header.frame_id = "world"
+        screwdriver_pose.pose.orientation.w = 1.0
+        screwdriver_pose.pose.position.z = 0.05  # above the panda_hand frame
+        screwdriver_pose.pose.position.y = -0.1  # above the panda_hand frame
+        screwdriver_pose.pose.position.x = 0.6 # above the panda_hand frame
+        joint_state = [1.093, 1.733, -1.513, -1.888, 1.743, 1.574, 1.589]
+        self.tool_loc.append(joint_state)
+        scene.add_mesh(self.tools_name[3], screwdriver_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/screwdriver_scaled.stl', size = (1,1,1))
 
         ## END_SUB_TUTORIAL
         # Copy local variables back to class variables. In practice, you should use the class
@@ -540,11 +640,39 @@ class MoveGroupPythonInterfaceTutorial(object):
         bin_pose.pose.orientation.w = quaternion[3]
         bin_pose.pose.position.z = 0.05  # above the panda_hand frame
         bin_pose.pose.position.y = 0.5  # above the panda_hand frame
-        bin_pose.pose.position.x = 0.2  # above the panda_hand frame
-        joint_state = [0.129, 0.405, 0.704, -2.250, -0.451, 2.516, 1.089]
+        bin_pose.pose.position.x = 0.15  # above the panda_hand frame
+        joint_state = [1.299, 0.793, -0.946, -2.065, 0.941, 2.346, 2.069]
         self.bins_loc.append(joint_state)
 
         scene.add_mesh(self.bin_name[0], bin_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/bin_scaled.stl', size = (1,1,1))
+        
+        bin_pose.pose.position.z = 0.05  # above the panda_hand frame
+        bin_pose.pose.position.y = 0.3  # above the panda_hand frame
+        bin_pose.pose.position.x = 0.15  # above the panda_hand frame
+        joint_state = [1.965, 0.387, -1.117, -2.286, 0.553, 2.405, 2.119]
+        joint_state = [-1.099, -0.434, 2.007, -2.307, 0.603, 2.405, 1.260]
+        # joint_state = [2.505, 1.243, -1.565, -2.317, 1.330, 1.796, 1.]
+        self.bins_loc.append(joint_state)
+
+        scene.add_mesh(self.bin_name[1], bin_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/bin_scaled.stl', size = (1,1,1))
+        
+        bin_pose.pose.position.z = 0.05  # above the panda_hand frame
+        bin_pose.pose.position.y = 0.5  # above the panda_hand frame
+        bin_pose.pose.position.x = 0.4  # above the panda_hand frame
+        joint_state = [-2.173, 0.052, 2.778, -2.890, 0.004, 2.858, 2.263]
+        self.bins_loc.append(joint_state)
+
+        scene.add_mesh(self.bin_name[2], bin_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/bin_scaled.stl', size = (1,1,1))
+
+        bin_pose.pose.position.z = 0.05  # above the panda_hand frame
+        bin_pose.pose.position.y = 0.3  # above the panda_hand frame
+        bin_pose.pose.position.x = 0.4  # above the panda_hand frame
+        joint_state = [1.486, 1.3, -1.415, -1.474, 1.285, 1.694, 0.837]
+        self.bins_loc.append(joint_state)
+
+        scene.add_mesh(self.bin_name[3], bin_pose, '/home/kwang/catkin_ws/src/pick_place_python/scripts/models/bin_scaled.stl', size = (1,1,1))
+
+
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
 
         
@@ -632,6 +760,51 @@ class MoveGroupPythonInterfaceTutorial(object):
         # We wait for the planning scene to update.
         return self.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=timeout)
 
+    def attach_tool(self, tool_name,  timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        robot = self.robot
+        scene = self.scene
+        eef_link = self.eef_link
+        group_names = self.group_names
+
+        ## BEGIN_SUB_TUTORIAL attach_object
+        ##
+        ## Attaching Objects to the Robot
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
+        ## robot be able to touch them without the planning scene reporting the contact as a
+        ## collision. By adding link names to the ``touch_links`` array, we are telling the
+        ## planning scene to ignore collisions between those links and the box. For the Panda
+        ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
+        ## you should change this value to the name of your end effector group name.
+        grasping_group = "panda_hand"
+        touch_links = robot.get_link_names(group=grasping_group)
+        scene.attach_box(eef_link, tool_name, touch_links=touch_links)
+        ## END_SUB_TUTORIAL
+
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(box_is_attached=True, box_is_known=False, timeout=timeout)
+
+    def detach_tool(self, tool_name, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        scene = self.scene
+        eef_link = self.eef_link
+
+        ## BEGIN_SUB_TUTORIAL detach_object
+        ##
+        ## Detaching Objects from the Robot
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## We can also detach and remove the object from the planning scene:
+        scene.remove_attached_object(eef_link, name=tool_name)
+        ## END_SUB_TUTORIAL
+
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(box_is_known=True, box_is_attached=False, timeout=timeout)
+    
     def detach_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
@@ -688,11 +861,17 @@ class MoveGroupPythonInterfaceTutorial(object):
         ## **Note:** The object must be detached before we can remove it from the world
         ## END_SUB_TUTORIAL
 
-    def pick_up_the_pen(self):
-        self.go_to_joint_state()
-        self.attach_box()
-        self.go_to_joint_state2()
-        self.detach_box()
+    def sort_tools(self):
+        for i in range(4):
+            self.pick_up_tools(tool=self.tool_loc[i])
+            self.attach_tool(tool_name=self.tools_name[i])
+            self.drop_off_tools(tool=self.bins_loc[i])
+            self.detach_tool(tool_name=self.tools_name[i])
+        # self.pick_up_tools(tool=self.tool_loc[1])
+        # self.attach_tool(tool_name=self.tools_name[1])
+        # self.drop_off_tools(tool=self.bins_loc[1])
+        # self.detach_tool(tool_name=self.tools_name[1])
+        self.home_position()
         return
 
 def main():
@@ -707,18 +886,22 @@ def main():
         tutorial = MoveGroupPythonInterfaceTutorial()
 
         input("============ Press `Enter` to set up the scene...")
-        tutorial.setup_scene()
-        tutorial.add_batteries()
+        # tutorial.setup_scene()
+
+        # tutorial.add_batteries()
         # tutorial.add_box()
         # tutorial.add_box2()
+        tutorial.setup_scene()
+        tutorial.add_tools()
         # tutorial.add_box3()
         input("============ Press `Enter` to move the pen...")
+        tutorial.sort_tools()
         # tutorial.pick_up_the_pen()
-        tutorial.pick_up_batteries()
-        tutorial.attach_battery()
-        tutorial.drop_off_batteries()
-        tutorial.detach_battery()
-        tutorial.home_position()
+        # tutorial.pick_up_batteries()
+        # tutorial.attach_battery()
+        # tutorial.drop_off_batteries()
+        # tutorial.detach_battery()
+        # tutorial.home_position()
 
         print("============ Robot complete!")
     except rospy.ROSInterruptException:
