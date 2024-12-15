@@ -872,7 +872,7 @@ class MoveGroupPythonInterfaceTutorial(object):
         # self.drop_off_tools(tool=self.bins_loc[1])
         # self.detach_tool(tool_name=self.tools_name[1])
         self.home_position()
-        return
+        return True
 
 def main():
     try:
